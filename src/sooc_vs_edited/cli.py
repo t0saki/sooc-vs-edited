@@ -38,7 +38,9 @@ def cmd_build(a: argparse.Namespace) -> int:
     title = a.title or edited_dir.name
 
     p = pair_directories(sooc_dir, edited_dir, a.key_regex, a.recursive)
-    print(f"配对 {len(p.pairs)} 组 · 仅直出 {len(p.sooc_only)} · 仅修图 {len(p.edited_only)}")
+    # 候选只取修过的那些；整卷里没修的直出不参与对比
+    print(f"候选 {len(p.pairs)} 组（修过的）· 未修的直出 {len(p.sooc_only)} 张不参与"
+          + (f" · 找不到直出的修图 {len(p.edited_only)} 张" if p.edited_only else ""))
     if p.duplicates:
         print(f"  注意：{len(p.duplicates)} 个帧号有重名文件，只取第一个 "
               f"({', '.join(list(p.duplicates)[:5])})")

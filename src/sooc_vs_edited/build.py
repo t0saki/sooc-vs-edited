@@ -129,9 +129,8 @@ def _escape(s: str) -> str:
 
 
 def _note(p: Pairing) -> str:
+    # 候选集 = 修过的那些。没修的直出是整卷的剩余部分，属于正常情况，不提示。
     bits = []
-    if p.sooc_only:
-        bits.append(f"{len(p.sooc_only)} 张只有直出（未修）")
     if p.edited_only:
         bits.append(f"{len(p.edited_only)} 张只有修图版")
     if p.duplicates:
