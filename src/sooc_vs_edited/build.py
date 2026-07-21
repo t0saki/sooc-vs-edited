@@ -44,15 +44,20 @@ def _align_pair(key: str, img_dir: Path) -> dict:
     out.parent.mkdir(parents=True, exist_ok=True)
     if src is None or ref is None:
         shutil.copy2(img_dir / "sooc" / f"{key}.jpg", out)
-        return {"p": 0.0, "s": 1.0, "r": 0.0, "ok": False}
+        return {"p": 0.0, "s": 1.0, "r": 0.0, "ok": False}, {}
 
     warped, report = align(src, ref)
     if warped is None:
         # Fall back to the unaligned preview so the viewer never hits a 404.
         shutil.copy2(img_dir / "sooc" / f"{key}.jpg", out)
-        return {"p": 0.0, "s": 1.0, "r": 0.0, "ok": False, "why": report.reason}
+        return {"p": 0.0, "s": 1.0, "r": 0.0, "ok": False, "why": report.reason}, {}
     cv2.imwrite(str(out), warped, [cv2.IMWRITE_JPEG_QUALITY, PREVIEW_QUALITY])
-    return {**report.as_meta(), "ok": True}
+    geom = {
+        "H": report.H,
+        "prev_sooc": [src.shape[1], src.shape[0]],
+        "prev_edited": [ref.shape[1], ref.shape[0]],
+    }
+    return {**report.as_meta(), "ok": True}, geom
 
 
 def build(
@@ -81,9 +86,10 @@ def build(
     _run(previews, pairing.pairs, jobs, on_progress, "preview")
 
     meta: dict[str, dict] = {}
+    geometry: dict[str, dict] = {}
     if do_align:
         def worker(key: str) -> None:
-            meta[key] = _align_pair(key, img_dir)
+            meta[key], geometry[key] = _align_pair(key, img_dir)
 
         _run(worker, pairing.pairs, jobs, on_progress, "align")
     else:
@@ -104,6 +110,7 @@ def build(
             for k in pairing.pairs
         },
         "meta": meta,
+        "geometry": geometry,
         "sooc_only": pairing.sooc_only,
         "edited_only": pairing.edited_only,
         "duplicates": pairing.duplicates,

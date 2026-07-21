@@ -87,6 +87,7 @@
     </div>
     <label class="switch"><input type="checkbox" id="autoChk" checked><span>选后自动下一张</span></label>
     <label class="switch"><input type="checkbox" id="compChk"><span>并排时左侧套修图构图</span></label>
+    <label class="switch"><input type="checkbox" id="matchChk" checked><span>直出导出套用修图构图</span></label>
     <label class="switch"><input type="checkbox" id="rawChk"><span>直出连 RAW 一起导</span></label>
     <button class="btn exp" id="exportBtn">导出选择 →</button>
   </div>
@@ -252,12 +253,14 @@ function downloadChoices(){
 async function doExport(){
   if(!Object.keys(choices).length){ toast('还没有任何选择',true); return; }
   const raw=document.getElementById('rawChk').checked;
+  const match=document.getElementById('matchChk').checked;
   try{
     const r=await fetch('export',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({choices,mirror:true,raw})});
+      body:JSON.stringify({choices,mirror:true,raw,match})});
     const j=await r.json();
     if(!r.ok||!j.ok) throw new Error(j.error||('http '+r.status));
-    toast('✓ 已导出 '+(j.sooc+j.edit)+' 张到 '+j.out+'（直出 '+j.sooc+' · 调色 '+j.edit+(j.raw?' · RAW '+j.raw:'')+'）'
+    toast('✓ 已导出 '+(j.sooc+j.edit)+' 张到 '+j.out+'（直出 '+j.sooc+' · 调色 '+j.edit
+      +(j.reframed?' · 其中 '+j.reframed+' 张直出套用了修图构图':'')+(j.raw?' · RAW '+j.raw:'')+'）'
       +(j.missing&&j.missing.length?' · 缺 '+j.missing.length:''));
   }catch(e){
     downloadChoices();

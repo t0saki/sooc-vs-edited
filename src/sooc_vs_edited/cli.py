@@ -88,7 +88,10 @@ def cmd_export(a: argparse.Namespace) -> int:
     if a.export_to:
         project["export_dir"] = str(Path(a.export_to).expanduser())
     payload = json.loads(Path(a.choices).expanduser().read_text())
-    result = do_export(project, payload.get("choices", payload), mirror=not a.no_mirror, with_raw=a.raw)
+    result = do_export(
+        project, payload.get("choices", payload),
+        mirror=not a.no_mirror, with_raw=a.raw, match_geometry=not a.keep_sooc_crop,
+    )
     print(json.dumps(result, ensure_ascii=False, indent=1))
     return 0
 
@@ -143,6 +146,8 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("choices", help="choices.json")
     e.add_argument("--export-to", help="覆盖导出目录")
     e.add_argument("--raw", action="store_true", help="选直出的同时带上 RAW")
+    e.add_argument("--keep-sooc-crop", action="store_true",
+                   help="导出直出时保留相机原始构图，不套用修图的裁切/旋转/透视")
     e.add_argument("--no-mirror", action="store_true", help="保留导出目录里已有的其他文件")
     e.set_defaults(func=cmd_export)
 

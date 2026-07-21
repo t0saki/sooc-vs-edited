@@ -36,6 +36,7 @@ class Handler(SimpleHTTPRequestHandler):
                 body.get("choices") or {},
                 mirror=bool(body.get("mirror", True)),
                 with_raw=bool(body.get("raw", False)),
+                match_geometry=bool(body.get("match", True)),
             )
         except Exception as exc:  # surface the reason in the toast
             self.send_response(500)
@@ -62,46 +63,69 @@ def source_for(project: dict, key: str, choice: str) -> Path | None:
     return None
 
 
-def do_export(project: dict, choices: dict, mirror: bool = True, with_raw: bool = False) -> dict:
+def do_export(
+    project: dict,
+    choices: dict,
+    mirror: bool = True,
+    with_raw: bool = False,
+    match_geometry: bool = True,
+) -> dict:
+    """Copy the chosen originals into the export folder.
+
+    Choosing 直出 picks the camera's colour, not its framing, so by default the
+    SOOC file is re-rendered into the crop the edit established.
+    """
     out = Path(project["export_dir"])
     out.mkdir(parents=True, exist_ok=True)
+    geometry = project.get("geometry") or {}
 
-    wanted: dict[str, Path] = {}
+    plan: dict[str, tuple[Path, str, bool]] = {}  # name -> (source, choice, reframed)
     missing: list[str] = []
-    counts = {"sooc": 0, "edit": 0, "raw": 0}
+    counts = {"sooc": 0, "edit": 0, "raw": 0, "reframed": 0}
 
     for key, choice in sorted(choices.items()):
         src = source_for(project, key, choice)
         if src is None or not src.exists():
             missing.append(key)
             continue
-        wanted[f"{key}{src.suffix.lower()}"] = src
+        reframe_it = match_geometry and choice == "sooc" and bool(geometry.get(key, {}).get("H"))
+        plan[f"{key}{'.jpg' if reframe_it else src.suffix.lower()}"] = (src, choice, reframe_it)
         counts[choice] += 1
         if with_raw and choice == "sooc":
             raw = find_raw(Path(project["sooc_dir"]), key, DEFAULT_KEY_RE)
             if raw:
-                wanted[raw.name] = raw
+                plan[raw.name] = (raw, "raw", False)
                 counts["raw"] += 1
 
     if mirror:
         # The folder should equal the current selection, not accumulate old picks.
-        keep = set(wanted) | {"manifest.csv"}
+        keep = set(plan) | {"manifest.csv"}
         for p in out.iterdir():
             if p.is_file() and p.name not in keep:
                 p.unlink()
 
-    for name, src in wanted.items():
+    reframed: set[str] = set()
+    for name, (src, choice, reframe_it) in plan.items():
         dest = out / name
+        key = name.rsplit(".", 1)[0]
+        if reframe_it:
+            from .reframe import reframe
+
+            edited = Path(project["edited_dir"]) / project["files"][key]["edited"]
+            if reframe(src, edited, geometry[key], dest):
+                reframed.add(name)
+                counts["reframed"] += 1
+                continue  # the edit changed framing, and we just re-applied it
         if dest.exists() and dest.stat().st_size == src.stat().st_size:
             continue
         shutil.copy2(src, dest)
 
     with (out / "manifest.csv").open("w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
-        w.writerow(["frame", "choice", "source"])
-        for key, choice in sorted(choices.items()):
-            src = source_for(project, key, choice)
-            w.writerow([key, choice, str(src) if src else ""])
+        w.writerow(["frame", "choice", "file", "reframed", "source"])
+        for name, (src, choice, _) in sorted(plan.items()):
+            key = name.rsplit(".", 1)[0]
+            w.writerow([key, choice, name, "yes" if name in reframed else "no", str(src)])
 
     return {
         "ok": True,
@@ -109,6 +133,7 @@ def do_export(project: dict, choices: dict, mirror: bool = True, with_raw: bool 
         "sooc": counts["sooc"],
         "edit": counts["edit"],
         "raw": counts["raw"],
+        "reframed": counts["reframed"],
         "missing": missing,
     }
 

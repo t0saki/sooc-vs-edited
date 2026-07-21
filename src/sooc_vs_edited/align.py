@@ -38,6 +38,9 @@ class Alignment:
     rot_deg: float = 0.0
     inliers: int = 0
     reason: str = ""
+    # The homography itself, in preview coordinates. Kept so a full-resolution
+    # export can re-apply the same framing without redoing feature matching.
+    H: list[list[float]] | None = None
 
     def as_meta(self) -> dict:
         return {"p": round(self.persp_px, 1), "s": round(self.scale, 3), "r": round(self.rot_deg, 2)}
@@ -100,4 +103,4 @@ def align(sooc_bgr: np.ndarray, edited_bgr: np.ndarray) -> tuple[np.ndarray | No
     warped = cv2.warpPerspective(
         sooc_bgr, H, (we, he), flags=cv2.INTER_LANCZOS4, borderValue=(0, 0, 0)
     )
-    return warped, Alignment(True, persp, scale, rot, inliers)
+    return warped, Alignment(True, persp, scale, rot, inliers, H=H.tolist())
