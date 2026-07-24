@@ -18,7 +18,7 @@
 依赖 numpy、Pillow、opencv-python-headless。用 [uv](https://docs.astral.sh/uv/) 免安装直接跑：
 
 ```bash
-uv run --from git+https://github.com/t0saki/sooc-vs-edited svse build \
+uv tool run --from git+https://github.com/t0saki/sooc-vs-edited svse build \
   --sooc  "/path/to/camera/jpg" \
   --edited "/path/to/lightroom/export"
 ```
