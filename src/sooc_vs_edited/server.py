@@ -21,7 +21,9 @@ class Handler(SimpleHTTPRequestHandler):
     root: Path = Path(".")
 
     def log_message(self, fmt, *args):  # quieter than the default access log
-        if "export" in (args[0] if args else ""):
+        # args[0] is the request line for access logs, but send_error routes an
+        # HTTPStatus through here — str() so a 404 (e.g. favicon) can't crash it.
+        if "export" in str(args[0] if args else ""):
             super().log_message(fmt, *args)
 
     def do_POST(self):  # noqa: N802 - stdlib naming
