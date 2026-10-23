@@ -115,9 +115,11 @@ def build(
         "edited_only": pairing.edited_only,
         "duplicates": pairing.duplicates,
     }
-    (out_dir / "project.json").write_text(json.dumps(project, ensure_ascii=False, indent=1))
+    (out_dir / "project.json").write_text(
+        json.dumps(project, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
 
-    html = TEMPLATE.read_text()
+    html = TEMPLATE.read_text(encoding="utf-8")
     replacements = {  # __TITLE_JSON__ must come first, it contains __TITLE__
         "__TITLE_JSON__": json.dumps(title, ensure_ascii=False),
         "__TITLE__": _escape(title),
@@ -127,7 +129,7 @@ def build(
     }
     for token, value in replacements.items():
         html = html.replace(token, value)
-    (out_dir / "index.html").write_text(html)
+    (out_dir / "index.html").write_text(html, encoding="utf-8")
     return project
 
 

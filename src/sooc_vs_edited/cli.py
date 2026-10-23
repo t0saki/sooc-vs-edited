@@ -22,7 +22,7 @@ def _load_project(out_dir: Path) -> dict:
     f = out_dir / "project.json"
     if not f.exists():
         sys.exit(f"没找到 {f}，先跑一次 build")
-    return json.loads(f.read_text())
+    return json.loads(f.read_text(encoding="utf-8"))
 
 
 def cmd_build(a: argparse.Namespace) -> int:
@@ -87,7 +87,7 @@ def cmd_export(a: argparse.Namespace) -> int:
     project = _load_project(out_dir)
     if a.export_to:
         project["export_dir"] = str(Path(a.export_to).expanduser())
-    payload = json.loads(Path(a.choices).expanduser().read_text())
+    payload = json.loads(Path(a.choices).expanduser().read_text(encoding="utf-8"))
     result = do_export(
         project, payload.get("choices", payload),
         mirror=not a.no_mirror, with_raw=a.raw, match_geometry=not a.keep_sooc_crop,
